@@ -1,0 +1,82 @@
+import type { TranslationKeys } from "./types";
+
+export const en: TranslationKeys = {
+    "plugin.ribbon": "Music Rating",
+    "plugin.openCommand": "Open Music Rating",
+
+    "view.title": "Music Rating",
+    "view.empty.noTracks": "No tracks",
+    "view.empty.allRated": "All tracks rated",
+    "view.empty.showAll": "Show all",
+    "view.empty.noPlayable": "No tracks to play",
+
+    "sidebar.shuffle": "Shuffle",
+    "sidebar.mode.filter": "Only unrated",
+    "sidebar.mode.list": "All tracks",
+    "sidebar.auto.on": "Auto-advance: on",
+    "sidebar.auto.off": "Auto-advance: off",
+
+    "rating.clear": "Clear rating",
+    "rating.cleared": "Rating cleared",
+    "rating.saved": "Rating {value} saved",
+
+    "youtube.open": "YouTube",
+    "youtube.add": "＋ Add YouTube",
+    "youtube.placeholder": "https://music.youtube.com/watch?v=...",
+    "youtube.save": "Save",
+    "youtube.cancel": "Cancel",
+    "youtube.empty": "Link is empty",
+    "youtube.saved": "Link saved",
+
+    "notice.noPlayable": "No tracks to play",
+    "notice.ratingSaved": "Rating {value} saved",
+    "notice.ratingCleared": "Rating cleared",
+    "notice.youtubeSaved": "Link saved",
+    "notice.youtubeEmpty": "Link is empty",
+
+    "settings.language.name": "Language",
+    "settings.language.desc": "Interface language of the plugin.",
+    "settings.language.auto": "Auto (follow Obsidian)",
+    "settings.musicFolder.name": "Collection folder",
+    "settings.musicFolder.desc": "Root folder of the collection. The plugin creates Artists/ and Tracks/ subfolders inside.",
+    "settings.audioFolder.name": "Audio folder",
+    "settings.audioFolder.desc": "Folder with audio files. Used to auto-fill the vault file link by the '<Artist> - <Title>' template.",
+    "settings.artistsIndexName.name": "Artists index note",
+    "settings.artistsIndexName.desc": "Note in the collection root listing all artists. Created automatically. Leave empty for 'Artists'.",
+    "settings.showNotice.name": "Show notice on rating",
+    "settings.advanceOnRate.name": "Advance after rating",
+    "settings.advanceOnRate.desc": "Move to the next track automatically after you set a rating.",
+
+    "common.artist.unknown": "Unknown",
+    "common.empty": "—",
+
+    "tab.rating": "Rating",
+    "tab.queue": "Queue",
+
+    "track.edit": "Edit track",
+    "track.add": "Add track",
+    "track.delete": "Delete track",
+    "track.deleteConfirmTitle": "Delete track?",
+    "track.deleteConfirmMessage": "Delete \"{title}\" by {artist}? This also removes the artist if it was the last track.",
+    "track.playPause": "Play / pause",
+    "track.editTitle": "Edit track",
+    "track.createTitle": "New track",
+    "track.field.artist": "Artist",
+    "track.field.title": "Title",
+    "track.field.localFile": "Music file name",
+    "track.field.youtube": "YouTube link",
+    "track.field.required": "required",
+    "track.sync": "Find matching audio file",
+    "track.sync.noMatch": "No matching audio file found",
+    "track.sync.found": "Found: {name}",
+
+    "notice.trackUpdated": "Track updated",
+    "notice.trackCreated": "Track created",
+    "notice.trackExists": "Track already exists",
+    "notice.requiredFields": "Fill in required fields",
+
+    "common.save": "Save",
+    "common.cancel": "Cancel",
+    "common.create": "Create",
+    "common.delete": "Delete",
+};

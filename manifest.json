@@ -1,0 +1,9 @@
+{
+    "id": "music-rating",
+    "name": "Music Rating",
+    "version": "1.0.0",
+    "minAppVersion": "1.5.0",
+    "description": "Rate music tracks from your vault in a dedicated pane.",
+    "author": "LeeryLis",
+    "isDesktopOnly": true
+}
