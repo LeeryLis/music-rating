@@ -5,5 +5,5 @@
     "minAppVersion": "1.5.0",
     "description": "Rate music tracks from your vault in a dedicated pane.",
     "author": "LeeryLis",
-    "isDesktopOnly": true
+    "isDesktopOnly": false
 }
