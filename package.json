@@ -1,6 +1,6 @@
 {
     "name": "music-rating",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "description": "Music rating widget plugin for Obsidian",
     "main": "main.js",
     "scripts": {
