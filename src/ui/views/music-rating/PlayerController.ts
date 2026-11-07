@@ -34,27 +34,6 @@ export class PlayerController {
         this._player.stop();
     }
 
-    onEnded(): void {
-        if (!this._queue.autoAdvance) return;
-        if (!this._queue.position.total) return;
-
-        const nextPath = this._queue.findNextPath((path) => this._pathHasFile(path));
-        if (nextPath && nextPath !== this._queue.currentPath) {
-            this._queue.setIndexByPath(nextPath);
-            this.playCurrent();
-            this._onChanged();
-            return;
-        }
-
-        if (this._currentFile()) {
-            this.playCurrent();
-        } else {
-            this._player.stop();
-            this._notifyNoPlayable();
-        }
-        this._onChanged();
-    }
-
     handleMissingFile(): void {
         this._player.stop();
         if (!this._queue.autoAdvance) return;

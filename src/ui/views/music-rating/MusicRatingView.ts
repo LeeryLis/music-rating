@@ -56,7 +56,6 @@ export class MusicRatingView extends ItemView {
 
     async onClose(): Promise<void> {
         this._vaultWatcher?.stop();
-        this._player.onEnded = null;
         this._player.onTimeUpdate = null;
         this._player.onPlayStateChange = null;
         this._player.onLoaded = null;
@@ -150,7 +149,6 @@ export class MusicRatingView extends ItemView {
     }
 
     private _bindPlayer(): void {
-        this._player.onEnded = () => this._playerCtl.onEnded();
         this._playerCtl.loadCurrent();
     }
 
