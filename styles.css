@@ -355,7 +355,8 @@
     align-items: center;
     justify-content: center;
     border: none;
-    background: transparent;
+    background: transparent !important;
+    background-color: transparent !important;
     color: var(--text-normal);
     cursor: pointer;
     border-radius: 8px;
@@ -365,7 +366,8 @@
 }
 
 .music-audio-btn:hover {
-    background: color-mix(in srgb, var(--interactive-accent) 12%, transparent);
+    background: color-mix(in srgb, var(--interactive-accent) 12%, transparent) !important;
+    background-color: color-mix(in srgb, var(--interactive-accent) 12%, transparent) !important;
 }
 
 .music-audio-bar {
@@ -507,6 +509,12 @@
     pointer-events: none;
 }
 
+.music-rating-clear .mr-btn-icon svg {
+    width: 28px;
+    height: 28px;
+    stroke-width: 2.4;
+}
+
 /* =========================================================
    ACTIONS
 ========================================================= */
@@ -533,11 +541,6 @@
 
 .music-action-btn:hover {
     border-color: var(--interactive-accent);
-    transform: translateY(-2px);
-}
-
-.music-action-btn:active {
-    transform: scale(0.96);
 }
 
 .music-action-prev,
@@ -718,7 +721,6 @@
 
 .music-rating-empty-action:hover {
     border-color: var(--interactive-accent);
-    transform: translateY(-1px);
 }
 
 /* =========================================================
