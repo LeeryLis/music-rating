@@ -79,4 +79,6 @@ export const en: TranslationKeys = {
     "common.cancel": "Cancel",
     "common.create": "Create",
     "common.delete": "Delete",
+
+    "queue.search.placeholder": "Search",
 };

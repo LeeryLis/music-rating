@@ -3,15 +3,18 @@ import type { MusicPlayer } from "../../../models/MusicPlayer";
 import type { QueueModel } from "../../../models/QueueModel";
 import type { RatingStore } from "../../../models/RatingStore";
 import type { TrackRepository } from "../../../models/TrackRepository";
-import type { MusicRatingSettings, ViewTab } from "../../../types";
+import type { MusicRatingSettings, TrackLike, ViewTab } from "../../../types";
 import { el } from "../../utils/dom";
 import { iconButton } from "../../utils/buttons";
 import { renderTrackCard } from "../../components/rating-tab/TrackCard";
 import { renderSidebar } from "../../components/rating-tab/Sidebar";
 import { renderEmptyForMode } from "../../components/rating-tab/EmptyState";
 import { renderTrackList } from "../../components/queue-tab/TrackList";
+import { TrackSuggest } from "../../utils/suggest/TrackSuggest";
+import { App } from "obsidian";
 
 export interface ViewRendererDeps {
+    app: App;
     queue: QueueModel;
     player: MusicPlayer;
     repo: TrackRepository;
@@ -145,9 +148,34 @@ export class ViewRenderer {
     }
 
     private _renderQueueTab(main: HTMLElement): void {
+        main.appendChild(this._renderQueueSearch());
         const list = this._renderTrackList();
         main.appendChild(list);
         this._restoreQueueScroll(list);
+    }
+
+    private _renderQueueSearch(): HTMLElement {
+        const wrap = el("div", "music-queue-search");
+        const input = el("input", "music-queue-search-input");
+        input.type = "text";
+        input.placeholder = t("queue.search.placeholder");
+        wrap.appendChild(input);
+
+        new TrackSuggest(
+            this._deps.app,
+            input,
+            this._deps.repo.collectTracks(),
+            (track) => this._handlePickSuggestion(track)
+        );
+
+        return wrap;
+    }
+
+    private _handlePickSuggestion(track: TrackLike): void {
+        const path = track.file.path;
+        if (!this._deps.queue.setIndexByPath(path)) return;
+        this._deps.onSelectTrack();
+        this.focusQueueOnNextRender();
     }
 
     private _renderTrackList(): HTMLElement {
