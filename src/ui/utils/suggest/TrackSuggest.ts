@@ -8,10 +8,10 @@ export class TrackSuggest extends InputSuggest<TrackLike> {
     constructor(
         app: App,
         inputEl: HTMLInputElement,
-        tracks: TrackLike[],
+        private _getTracks: () => TrackLike[],
         private _onPick: (track: TrackLike) => void
     ) {
-        super(app, inputEl, tracks);
+        super(app, inputEl, []);
     }
 
     protected toText(track: TrackLike): string {
@@ -19,9 +19,10 @@ export class TrackSuggest extends InputSuggest<TrackLike> {
     }
 
     getSuggestions(query: string): TrackLike[] {
+        const tracks = this._getTracks();
         const q = query.trim().toLowerCase();
-        if (!q) return this.items;
-        return this.items.filter((t) => {
+        if (!q) return tracks;
+        return tracks.filter((t) => {
             const artist = formatArtist(t.artist).toLowerCase();
             return t.title.toLowerCase().includes(q) || artist.includes(q);
         });

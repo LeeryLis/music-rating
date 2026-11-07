@@ -35,12 +35,9 @@ export interface ViewRendererDeps {
 export class ViewRenderer {
     private _queueScrollTop = 0;
     private _focusQueueOnNextRender = false;
+    private _pendingFocusPath: string | null = null;
 
     constructor(private _deps: ViewRendererDeps) { }
-
-    focusQueueOnNextRender(): void {
-        this._focusQueueOnNextRender = true;
-    }
 
     render(root: HTMLElement): void {
         this._captureQueueScroll(root);
@@ -48,6 +45,14 @@ export class ViewRenderer {
         root.empty();
         root.appendChild(this._renderHeader());
         root.appendChild(this._renderOuter());
+    }
+
+    focusQueueOnNextRender(): void {
+        this._focusQueueOnNextRender = true;
+    }
+
+    focusQueueOnPath(path: string): void {
+        this._pendingFocusPath = path;
     }
 
     private _captureQueueScroll(root: HTMLElement): void {
@@ -164,7 +169,7 @@ export class ViewRenderer {
         new TrackSuggest(
             this._deps.app,
             input,
-            this._deps.repo.collectTracks(),
+            () => this._deps.queue.activeTracks(),
             (track) => this._handlePickSuggestion(track)
         );
 
@@ -174,8 +179,8 @@ export class ViewRenderer {
     private _handlePickSuggestion(track: TrackLike): void {
         const path = track.file.path;
         if (!this._deps.queue.setIndexByPath(path)) return;
+        this.focusQueueOnPath(path);
         this._deps.onSelectTrack();
-        this.focusQueueOnNextRender();
     }
 
     private _renderTrackList(): HTMLElement {
@@ -194,14 +199,34 @@ export class ViewRenderer {
     }
 
     private _restoreQueueScroll(list: HTMLElement): void {
+        const pendingPath = this._pendingFocusPath;
         const needFocus = this._focusQueueOnNextRender;
-        this._focusQueueOnNextRender = false;
+
+        if (!pendingPath && !needFocus) {
+            window.requestAnimationFrame(() => {
+                const maxScroll = Math.max(0, list.scrollHeight - list.clientHeight);
+                list.scrollTop = Math.min(this._queueScrollTop, maxScroll);
+            });
+            return;
+        }
 
         window.requestAnimationFrame(() => {
+            this._pendingFocusPath = null;
+            this._focusQueueOnNextRender = false;
+
             const maxScroll = Math.max(0, list.scrollHeight - list.clientHeight);
-            const target = needFocus
-                ? list.querySelector<HTMLElement>(".music-track-row.is-current")
-                : null;
+
+            let target: HTMLElement | null = null;
+
+            if (pendingPath) {
+                target = list.querySelector<HTMLElement>(
+                    `.music-track-row[data-path="${CSS.escape(pendingPath)}"]`
+                );
+            }
+            if (!target) {
+                target = list.querySelector<HTMLElement>(".music-track-row.is-current");
+            }
+
             list.scrollTop = target
                 ? Math.min(target.offsetTop, maxScroll)
                 : Math.min(this._queueScrollTop, maxScroll);

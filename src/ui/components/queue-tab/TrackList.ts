@@ -41,6 +41,7 @@ function _renderRow(
     currentIndex: number
 ): HTMLElement {
     const row = el("div", "music-track-row");
+    row.dataset.path = path;
     if (index === currentIndex) row.classList.add("is-current");
 
     row.appendChild(el("div", "music-track-num", String(index + 1)));
