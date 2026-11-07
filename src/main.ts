@@ -4,48 +4,47 @@ import { TrackRepository } from "./models/TrackRepository";
 import { MusicRatingView, VIEW_TYPE_MUSIC_RATING } from "./ui/views/music-rating/MusicRatingView";
 import { MusicRatingSettingTab } from "./ui/settings/MusicRatingSettingsTab";
 import { TrackCreateModal } from "./ui/modals/TrackCreateModal";
-import { DEFAULT_SETTINGS, MusicRatingSettings, PersistedQueue } from "./types";
-import { MusicPlayer } from "./models/MusicPlayer";
-import { QueueModel } from "./models/QueueModel";
-
-interface PluginData extends MusicRatingSettings {
-    queueState?: PersistedQueue | null;
-}
+import { DEFAULT_SETTINGS, MusicRatingSettings } from "./types";
+import { PlaybackService } from "./services/PlaybackService";
+import { QueuePersistence } from "./services/QueuePersistence";
 
 export default class MusicRatingPlugin extends Plugin {
     settings: MusicRatingSettings = { ...DEFAULT_SETTINGS };
 
-    player!: MusicPlayer;
-    queue!: QueueModel;
     repo!: TrackRepository;
+    playback!: PlaybackService;
 
-    private _queueState: PersistedQueue | null = null;
+    private _persistence!: QueuePersistence;
 
     async onload(): Promise<void> {
         await this._loadData();
 
         this._setupRepository();
-        this._setupPlayer();
-        this._setupQueue();
+        this._setupPlayback();
 
         this._registerView();
         this._registerRibbon();
         this._registerCommands();
-
         this.addSettingTab(new MusicRatingSettingTab(this.app, this));
     }
 
     onunload(): void {
-        this.queue.onTrackChanged = null;
-        this.player?.destroy();
+        this.playback?.destroy();
         this.app.workspace.detachLeavesOfType(VIEW_TYPE_MUSIC_RATING);
     }
 
     async saveSettings(): Promise<void> {
-        await this._saveData();
+        await this._persistence.save();
     }
 
-    private _setupRepository(): void {
+    private async _loadData() {
+        this._persistence = new QueuePersistence(this, () => this.settings);
+        const { settings } = await this._persistence.load();
+        this.settings = { ...DEFAULT_SETTINGS, ...settings };
+        setLocale(this.settings.language);
+    }
+
+    private _setupRepository() {
         this.repo = new TrackRepository(
             this.app,
             () => this.settings.musicFolder,
@@ -54,67 +53,35 @@ export default class MusicRatingPlugin extends Plugin {
         );
     }
 
-    private _setupPlayer(): void {
-        this.player = new MusicPlayer(this.app);
-    }
-
-    private async _setupQueue(): Promise<void> {
-        this.queue = new QueueModel(
-            this.repo,
-            this._queueState,
-            (state) => this._handleQueueStateChange(state)
-        );
-        await this._whenMetadataReady();
-        this.queue.initialize();
-        this._rebuildAllViews();
-        this.queue.onTrackChanged = () => this._handleTrackChanged();
-    }
-
-    private _whenMetadataReady(): Promise<void> {
-        const cache = this.app.metadataCache;
-        if ((cache as any).resolved) return Promise.resolve();
-
-        return new Promise((resolve) => {
-            const ref = cache.on("resolved", () => {
-                cache.offref(ref);
-                resolve();
-            });
+    private _setupPlayback() {
+        this.playback = new PlaybackService({
+            app: this.app,
+            repo: this.repo,
+            initialQueue: this._persistence.state,
+            onQueuePersist: (state) => {
+                this._persistence.state = state;
+                void this._persistence.save();
+            },
+            onChanged: () => this._rebuildAllViews(),
         });
-    }
-
-    private _handleTrackChanged(): void {
-        const track = this.queue.currentTrack;
-        if (!track) {
-            this.player.stop();
-            return;
-        }
-        const file = this.repo.resolveLocalFile(track);
-        if (!file) {
-            this.player.stop();
-            return;
-        }
-        if (this.player.isPlaying()) this.player.playFile(file);
-        else this.player.ensureFile(file);
+        void this.playback.start();
     }
 
     private _registerView(): void {
         this.registerView(
             VIEW_TYPE_MUSIC_RATING,
-            (leaf) =>
-                new MusicRatingView(
-                    leaf,
-                    this.settings,
-                    this.repo,
-                    this.queue,
-                    this.player,
-                )
+            (leaf) => new MusicRatingView(
+                leaf,
+                this.settings,
+                this.repo,
+                this.playback.queue,
+                this.playback.player,
+            )
         );
     }
 
     private _registerRibbon(): void {
-        this.addRibbonIcon("music", t("plugin.ribbon"), () => {
-            void this._activateView();
-        });
+        this.addRibbonIcon("music", t("plugin.ribbon"), () => void this._activateView());
     }
 
     private _registerCommands(): void {
@@ -145,11 +112,6 @@ export default class MusicRatingPlugin extends Plugin {
         new TrackCreateModal(this.app, this.repo, () => this._rebuildAllViews()).open();
     }
 
-    private _handleQueueStateChange(state: PersistedQueue): void {
-        this._queueState = state;
-        void this._saveData();
-    }
-
     private _getViews(): MusicRatingView[] {
         return this.app.workspace
             .getLeavesOfType(VIEW_TYPE_MUSIC_RATING)
@@ -159,21 +121,5 @@ export default class MusicRatingPlugin extends Plugin {
 
     private _rebuildAllViews(): void {
         for (const view of this._getViews()) view.rebuild();
-    }
-
-    private async _loadData(): Promise<void> {
-        const raw = (await this.loadData()) as Partial<PluginData> | null;
-        const { queueState, ...settingsRaw } = raw ?? {};
-        this.settings = { ...DEFAULT_SETTINGS, ...settingsRaw };
-        this._queueState = queueState ?? null;
-        setLocale(this.settings.language);
-    }
-
-    private async _saveData(): Promise<void> {
-        const data: PluginData = {
-            ...this.settings,
-            queueState: this._queueState,
-        };
-        await this.saveData(data);
     }
 }
