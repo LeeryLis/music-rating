@@ -81,4 +81,6 @@ export interface TranslationKeys {
     "common.cancel": string;
     "common.create": string;
     "common.delete": string;
+
+    "queue.search.placeholder": string;
 }

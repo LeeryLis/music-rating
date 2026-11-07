@@ -103,6 +103,7 @@ export class MusicRatingView extends ItemView {
 
     private _buildRendererDeps() {
         return {
+            app: this.app,
             queue: this._queue,
             player: this._player,
             repo: this._repo,

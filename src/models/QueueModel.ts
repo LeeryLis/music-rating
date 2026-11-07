@@ -113,6 +113,15 @@ export class QueueModel {
         });
     }
 
+    activeTracks(): TrackLike[] {
+        const result: TrackLike[] = [];
+        for (const path of this.active.queue) {
+            const track = this._repo.findTrackByPath(path);
+            if (track) result.push(track);
+        }
+        return result;
+    }
+
     private _withTrackChangeDetection<T>(fn: () => T): T {
         const before = this.currentPath;
         const result = fn();

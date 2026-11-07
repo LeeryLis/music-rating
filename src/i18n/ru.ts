@@ -82,4 +82,6 @@ export const ru: TranslationKeys = {
     "common.cancel": "Отмена",
     "common.create": "Создать",
     "common.delete": "Удалить",
+
+    "queue.search.placeholder": "Поиск",
 };
