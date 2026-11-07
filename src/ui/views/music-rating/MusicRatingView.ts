@@ -17,13 +17,10 @@ import { ConfirmDeleteModal } from "../../modals/ConfirmDeleteModal";
 export const VIEW_TYPE_MUSIC_RATING = "music-rating-view";
 
 export class MusicRatingView extends ItemView {
-    private _player = new MusicPlayer(this.app);
     private _store = new RatingStore(this.app);
-    private _queue: QueueModel;
     private _tab: ViewTab = "rating";
 
     private _rootEl!: HTMLElement;
-    private _audioHost!: HTMLElement;
 
     private _playerCtl!: PlayerController;
     private _vaultWatcher!: VaultWatcher;
@@ -33,11 +30,10 @@ export class MusicRatingView extends ItemView {
         leaf: WorkspaceLeaf,
         private _settings: MusicRatingSettings,
         private _repo: TrackRepository,
-        initialState: PersistedQueue | null,
-        onStateChange: (s: PersistedQueue) => void
+        private _queue: QueueModel,
+        private _player: MusicPlayer
     ) {
         super(leaf);
-        this._queue = new QueueModel(_repo, initialState, onStateChange);
     }
 
     getViewType(): string {
@@ -52,8 +48,6 @@ export class MusicRatingView extends ItemView {
 
     async onOpen(): Promise<void> {
         this._setupDom();
-        this._queue.initialize();
-        this._queue.onTrackChanged = () => this._handleTrackChanged();
         this._setupControllers();
         this._bindPlayer();
         this._startWatcher();
@@ -61,22 +55,22 @@ export class MusicRatingView extends ItemView {
     }
 
     async onClose(): Promise<void> {
-        this._queue.onTrackChanged = null;
         this._vaultWatcher?.stop();
         this._player.onEnded = null;
-        this._player.destroy();
+        this._player.onTimeUpdate = null;
+        this._player.onPlayStateChange = null;
+        this._player.onLoaded = null;
+        this._player.onVolumeChange = null;
         this.contentEl.empty();
     }
 
     next(): void {
         if (!this._queue.next()) return;
-        this._playerCtl.playCurrent();
         this._render();
     }
 
     prev(): void {
         if (!this._queue.prev()) return;
-        this._playerCtl.playCurrent();
         this._render();
     }
 
@@ -89,18 +83,8 @@ export class MusicRatingView extends ItemView {
         this.contentEl.addClass("music-rating-view");
         this.contentEl.empty();
 
-        this._audioHost = el("div", "music-rating-audio-host");
-        this._audioHost.appendChild(this._player.getElement());
-        this.contentEl.appendChild(this._audioHost);
-
         this._rootEl = el("div", "music-rating-root");
         this.contentEl.appendChild(this._rootEl);
-    }
-
-    private _handleTrackChanged(): void {
-        if (!this._queue.currentTrack) return;
-        if (this._player.isPlaying()) this._playerCtl.playCurrent();
-        else this._playerCtl.loadCurrent();
     }
 
     private _setupControllers(): void {

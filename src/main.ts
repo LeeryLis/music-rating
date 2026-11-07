@@ -5,6 +5,8 @@ import { MusicRatingView, VIEW_TYPE_MUSIC_RATING } from "./ui/views/music-rating
 import { MusicRatingSettingTab } from "./ui/settings/MusicRatingSettingsTab";
 import { TrackCreateModal } from "./ui/modals/TrackCreateModal";
 import { DEFAULT_SETTINGS, MusicRatingSettings, PersistedQueue } from "./types";
+import { MusicPlayer } from "./models/MusicPlayer";
+import { QueueModel } from "./models/QueueModel";
 
 interface PluginData extends MusicRatingSettings {
     queueState?: PersistedQueue | null;
@@ -12,19 +14,30 @@ interface PluginData extends MusicRatingSettings {
 
 export default class MusicRatingPlugin extends Plugin {
     settings: MusicRatingSettings = { ...DEFAULT_SETTINGS };
-    private _repo!: TrackRepository;
+
+    player!: MusicPlayer;
+    queue!: QueueModel;
+    repo!: TrackRepository;
+
     private _queueState: PersistedQueue | null = null;
 
     async onload(): Promise<void> {
         await this._loadData();
+
         this._setupRepository();
+        this._setupPlayer();
+        this._setupQueue();
+
         this._registerView();
         this._registerRibbon();
         this._registerCommands();
+
         this.addSettingTab(new MusicRatingSettingTab(this.app, this));
     }
 
     onunload(): void {
+        this.queue.onTrackChanged = null;
+        this.player?.destroy();
         this.app.workspace.detachLeavesOfType(VIEW_TYPE_MUSIC_RATING);
     }
 
@@ -33,12 +46,55 @@ export default class MusicRatingPlugin extends Plugin {
     }
 
     private _setupRepository(): void {
-        this._repo = new TrackRepository(
+        this.repo = new TrackRepository(
             this.app,
             () => this.settings.musicFolder,
             () => this.settings.audioFolder,
             () => this.settings.artistsIndexName
         );
+    }
+
+    private _setupPlayer(): void {
+        this.player = new MusicPlayer(this.app);
+    }
+
+    private async _setupQueue(): Promise<void> {
+        this.queue = new QueueModel(
+            this.repo,
+            this._queueState,
+            (state) => this._handleQueueStateChange(state)
+        );
+        await this._whenMetadataReady();
+        this.queue.initialize();
+        this._rebuildAllViews();
+        this.queue.onTrackChanged = () => this._handleTrackChanged();
+    }
+
+    private _whenMetadataReady(): Promise<void> {
+        const cache = this.app.metadataCache;
+        if ((cache as any).resolved) return Promise.resolve();
+
+        return new Promise((resolve) => {
+            const ref = cache.on("resolved", () => {
+                cache.offref(ref);
+                resolve();
+            });
+        });
+    }
+
+    private _handleTrackChanged(): void {
+        const track = this.queue.currentTrack;
+        if (!track) {
+            this.player.stop();
+            return;
+        }
+        const file = this.repo.resolveLocalFile(track);
+        if (!file) {
+            this.player.stop();
+            return;
+        }
+        if (this.player.isPlaying()) this.player.playFile(file);
+        else this.player.ensureFile(file);
     }
 
     private _registerView(): void {
@@ -48,9 +104,9 @@ export default class MusicRatingPlugin extends Plugin {
                 new MusicRatingView(
                     leaf,
                     this.settings,
-                    this._repo,
-                    this._queueState,
-                    (state) => this._handleQueueStateChange(state)
+                    this.repo,
+                    this.queue,
+                    this.player,
                 )
         );
     }
@@ -86,7 +142,7 @@ export default class MusicRatingPlugin extends Plugin {
     }
 
     private _createTrack(): void {
-        new TrackCreateModal(this.app, this._repo, () => this._rebuildAllViews()).open();
+        new TrackCreateModal(this.app, this.repo, () => this._rebuildAllViews()).open();
     }
 
     private _handleQueueStateChange(state: PersistedQueue): void {
