@@ -105,12 +105,31 @@ export class QueueModel {
         this._withTrackChangeDetection(() => {
             const a = this.active;
             if (!a.queue.length) return;
-            a.queue = this._state.mode === "all"
+
+            const currentPath = this.currentPath;
+
+            const shuffled = this._state.mode === "all"
                 ? this._shuffleAllGrouped(a.queue)
                 : this._shuffle(a.queue);
+
+            if (currentPath) {
+                a.queue = [currentPath, ...shuffled.filter((p) => p !== currentPath)];
+            } else {
+                a.queue = shuffled;
+            }
+
             a.index = 0;
             this._persist();
         });
+    }
+
+    activeTracks(): TrackLike[] {
+        const result: TrackLike[] = [];
+        for (const path of this.active.queue) {
+            const track = this._repo.findTrackByPath(path);
+            if (track) result.push(track);
+        }
+        return result;
     }
 
     private _withTrackChangeDetection<T>(fn: () => T): T {

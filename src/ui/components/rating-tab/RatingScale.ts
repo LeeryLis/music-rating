@@ -41,7 +41,7 @@ function _makeSegment(value: number, ctx: RatingScaleContext): HTMLButtonElement
 
 function _renderClear(ctx: RatingScaleContext): HTMLButtonElement {
     const clear = makeButton({
-        text: "✕",
+        icon: "x",
         cls: "music-rating-clear",
         onClick: () => ctx.onClear(),
     });

@@ -4,20 +4,24 @@ import { TrackRepository } from "./models/TrackRepository";
 import { MusicRatingView, VIEW_TYPE_MUSIC_RATING } from "./ui/views/music-rating/MusicRatingView";
 import { MusicRatingSettingTab } from "./ui/settings/MusicRatingSettingsTab";
 import { TrackCreateModal } from "./ui/modals/TrackCreateModal";
-import { DEFAULT_SETTINGS, MusicRatingSettings, PersistedQueue } from "./types";
-
-interface PluginData extends MusicRatingSettings {
-    queueState?: PersistedQueue | null;
-}
+import { DEFAULT_SETTINGS, MusicRatingSettings } from "./types";
+import { PlaybackService } from "./services/PlaybackService";
+import { QueuePersistence } from "./services/QueuePersistence";
 
 export default class MusicRatingPlugin extends Plugin {
     settings: MusicRatingSettings = { ...DEFAULT_SETTINGS };
-    private _repo!: TrackRepository;
-    private _queueState: PersistedQueue | null = null;
+
+    repo!: TrackRepository;
+    playback!: PlaybackService;
+
+    private _persistence!: QueuePersistence;
 
     async onload(): Promise<void> {
         await this._loadData();
+
         this._setupRepository();
+        this._setupPlayback();
+
         this._registerView();
         this._registerRibbon();
         this._registerCommands();
@@ -25,15 +29,23 @@ export default class MusicRatingPlugin extends Plugin {
     }
 
     onunload(): void {
+        this.playback?.destroy();
         this.app.workspace.detachLeavesOfType(VIEW_TYPE_MUSIC_RATING);
     }
 
     async saveSettings(): Promise<void> {
-        await this._saveData();
+        await this._persistence.save();
     }
 
-    private _setupRepository(): void {
-        this._repo = new TrackRepository(
+    private async _loadData() {
+        this._persistence = new QueuePersistence(this, () => this.settings);
+        const { settings } = await this._persistence.load();
+        this.settings = { ...DEFAULT_SETTINGS, ...settings };
+        setLocale(this.settings.language);
+    }
+
+    private _setupRepository() {
+        this.repo = new TrackRepository(
             this.app,
             () => this.settings.musicFolder,
             () => this.settings.audioFolder,
@@ -41,24 +53,35 @@ export default class MusicRatingPlugin extends Plugin {
         );
     }
 
+    private _setupPlayback() {
+        this.playback = new PlaybackService({
+            app: this.app,
+            repo: this.repo,
+            initialQueue: this._persistence.state,
+            onQueuePersist: (state) => {
+                this._persistence.state = state;
+                void this._persistence.save();
+            },
+            onChanged: () => this._rebuildAllViews(),
+        });
+        void this.playback.start();
+    }
+
     private _registerView(): void {
         this.registerView(
             VIEW_TYPE_MUSIC_RATING,
-            (leaf) =>
-                new MusicRatingView(
-                    leaf,
-                    this.settings,
-                    this._repo,
-                    this._queueState,
-                    (state) => this._handleQueueStateChange(state)
-                )
+            (leaf) => new MusicRatingView(
+                leaf,
+                this.settings,
+                this.repo,
+                this.playback.queue,
+                this.playback.player,
+            )
         );
     }
 
     private _registerRibbon(): void {
-        this.addRibbonIcon("music", t("plugin.ribbon"), () => {
-            void this._activateView();
-        });
+        this.addRibbonIcon("music", t("plugin.ribbon"), () => void this._activateView());
     }
 
     private _registerCommands(): void {
@@ -86,12 +109,7 @@ export default class MusicRatingPlugin extends Plugin {
     }
 
     private _createTrack(): void {
-        new TrackCreateModal(this.app, this._repo, () => this._rebuildAllViews()).open();
-    }
-
-    private _handleQueueStateChange(state: PersistedQueue): void {
-        this._queueState = state;
-        void this._saveData();
+        new TrackCreateModal(this.app, this.repo, () => this._rebuildAllViews()).open();
     }
 
     private _getViews(): MusicRatingView[] {
@@ -103,21 +121,5 @@ export default class MusicRatingPlugin extends Plugin {
 
     private _rebuildAllViews(): void {
         for (const view of this._getViews()) view.rebuild();
-    }
-
-    private async _loadData(): Promise<void> {
-        const raw = (await this.loadData()) as Partial<PluginData> | null;
-        const { queueState, ...settingsRaw } = raw ?? {};
-        this.settings = { ...DEFAULT_SETTINGS, ...settingsRaw };
-        this._queueState = queueState ?? null;
-        setLocale(this.settings.language);
-    }
-
-    private async _saveData(): Promise<void> {
-        const data: PluginData = {
-            ...this.settings,
-            queueState: this._queueState,
-        };
-        await this.saveData(data);
     }
 }
